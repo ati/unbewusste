@@ -61,7 +61,7 @@ end
 
 
 def process_mail
-  Gmail.new(CONFIG['gmail_login'], CONFIG['gmail_pw']) do |gmail|
+  Gmail.new(CONFIG['account']['gmail_login'], CONFIG['account']['gmail_pw']) do |gmail|
     gmail.inbox.emails.each do |email|
 
       src_from = email.message.from
@@ -99,5 +99,5 @@ begin
 	LOGGER.info("starting...")
 	process_mail()
 rescue Exception => e
-	LOGGER.error("caught exception processing potd: #{e.message}\n" + e.backtrace.join("\n"))
+	LOGGER.error("caught exception processing mail: #{e.message}\n" + e.backtrace.join("\n"))
 end
