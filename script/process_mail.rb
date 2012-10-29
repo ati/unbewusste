@@ -6,6 +6,7 @@ require 'sequel'
 
 BASE_DIR = File.dirname(File.dirname(__FILE__))
 CONFIG = ParseConfig.new(BASE_DIR + '/config/mail.config')
+#LOGGER = Logger.new(STDOUT)
 LOGGER = Logger.new(BASE_DIR + '/logs/mail.log')
 LOGGER.level = Logger::DEBUG
 DB = Sequel.sqlite(BASE_DIR + '/db/mail.sqlite3')
@@ -48,7 +49,7 @@ def email_flip(from, subject)
     while (i < nr*10) && (to.size < nr)
       i += 1
       t = CONFIG['participants'].values.sample
-	  if !(t.eql?(from) || to.include?(from))
+	  if !(t.eql?(from) || to.include?(t))
       	to.push(t)
 	  end
     end
@@ -66,9 +67,9 @@ def process_mail
   Gmail.new(CONFIG['account']['gmail_login'], CONFIG['account']['gmail_pw']) do |gmail|
     gmail.inbox.emails.each do |email|
 
-	  sender = email.envelope.from.first
-      src_from = sender.mailbox + '@' + sender.host
-      src_subject = email.message.subject
+	  #sender = email.envelope.from.first
+      src_from = email.from.first
+      src_subject = email.subject
 
       LOGGER.info("new mail from #{src_from}: #{src_subject}")
 
@@ -82,7 +83,8 @@ def process_mail
 
 	  LOGGER.info("sending mail to '#{dst_to}', subject '#{dst_subject}'")
 
-      gmail.deliver do
+      new_mail = gmail.generate_message do
+		from CONFIG['account']['gmail_login']
         if dst_to.nil?
           to src_from
           subject "#{CONFIG['system']['name']} ERROR: #{dst_subject}"
@@ -90,9 +92,12 @@ def process_mail
           to dst_to
           subject dst_subject
         end
-        body email.message.body
+        body email.body.to_s
       end
-      #email.delete!
+
+	  new_mail.deliver!
+	  #LOGGER.info(new_mail.inspect)
+      email.delete!
     end
   end
 end
