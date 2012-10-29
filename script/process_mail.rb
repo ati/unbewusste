@@ -48,11 +48,13 @@ def email_flip(from, subject)
     while (i < nr*10) && (to.size < nr)
       i += 1
       t = CONFIG['participants'].values.sample
-      to.push(t) unless t.eql?(from)
+	  if !(t.eql?(from) || to.include?(from))
+      	to.push(t)
+	  end
     end
 
     if to.size.eql?(nr) 
-      [to.join(','), "[id:#{from_hash}] #{subject}"]
+      [ to, "[id:#{from_hash}] #{subject}"]
     else
       [nil, "Can't find #{nr} recepients in my configuration"]
     end
@@ -64,7 +66,8 @@ def process_mail
   Gmail.new(CONFIG['account']['gmail_login'], CONFIG['account']['gmail_pw']) do |gmail|
     gmail.inbox.emails.each do |email|
 
-      src_from = email.message.from
+	  sender = email.envelope.from.first
+      src_from = sender.mailbox + '@' + sender.host
       src_subject = email.message.subject
 
       LOGGER.info("new mail from #{src_from}: #{src_subject}")
@@ -77,8 +80,10 @@ def process_mail
         dst_to, dst_subject = email_flip(src_from, src_subject)
       end
 
+	  LOGGER.info("sending mail to '#{dst_to}', subject '#{dst_subject}'")
+
       gmail.deliver do
-        if dst.nil?
+        if dst_to.nil?
           to src_from
           subject "#{CONFIG['system']['name']} ERROR: #{dst_subject}"
         else
